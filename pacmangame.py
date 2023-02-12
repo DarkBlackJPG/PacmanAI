@@ -84,14 +84,62 @@ class PacmanGame:
         self.pause = False
         self.powerup_timer = None
         self.power_pellet_time = 10000
+        self.fruit_spawn_points = [
+            (10, 12),
+            (10, 13),
+            (10, 14),
+            (10, 15),
+            (10, 16),
+            (10, 17),
+            (10, 18),
+            (11, 18),
+            (12, 18),
+            (13, 18),
+            (14, 18),
+            (15, 18),
+            (16, 18),
+            (17, 18),
+            (18, 18),
+            (19, 18),
+            (19, 17),
+            (19, 16),
+            (19, 15),
+            (19, 14),
+            (19, 13),
+            (19, 12),
+            (18, 12),
+            (17, 12),
+            (16, 12),
+            (15, 12),
+            (14, 12),
+            (13, 12),
+            (12, 12),
+            (11, 12),
+        ]
+        self.fruits = [Apple(self), Strawberry(self), Cherry(self)]
+
+        self.fruit_group = pygame.sprite.Group()
+        self.fruit_group.add(self.fruits[0])
+        self.fruit_group.add(self.fruits[1])
+        self.fruit_group.add(self.fruits[2])
+
+        self.number_of_small_pellets = 240
+        self.number_of_powerups = 4
 
         self.small_pellet_score = 10
         self.power_pellet_score = 50
         self.ghost_eat_index = 0
         self.ghost_eat_scores = [200, 400, 800, 1600]
 
-        self.score_text = self.font.render('SCORE: 0', False, (255, 255, 255))
+        self.fruit_spawned = False
+        self.spawned_fruit_index = 0
+        self.fruit_spawned_begin = None
+        self.fruit_spawned_timeout = 10 * 1000
 
+        self.fruit_random_spawn_timer = 0
+        self.fruit_spawn_timer = 0
+
+        self.score_text = self.font.render('SCORE: 0', False, (255, 255, 255))
 
     def ghost_eaten(self):
         self.score += self.ghost_eat_scores[self.ghost_eat_index]
@@ -99,12 +147,48 @@ class PacmanGame:
         self.score_text = self.font.render(f'SCORE: {self.score}', False, (255, 255, 255))
         pass
 
+    def fruit_spawn(self):
+        if not self.fruit_spawned \
+                and self.number_of_small_pellets + self.number_of_powerups <= 122 \
+                and pygame.time.get_ticks() - self.fruit_spawn_timer >= self.fruit_random_spawn_timer:
+            rng = random.Random()
+            rng.seed(time.time())
+
+            self.fruit_spawned = True
+            self.fruit_spawned_begin = pygame.time.get_ticks()
+
+            self.spawned_fruit_index = rng.randrange(0, 3)
+            spawn_point_index = rng.randrange(0, len(self.fruit_spawn_points))
+            spawn_point = self.fruit_spawn_points[spawn_point_index]
+            self.fruits[self.spawned_fruit_index].rect.center = self.calculate_center(spawn_point[0], spawn_point[1])
+
+    def eat_fruit(self, fruit):
+        self.score += fruit.get_points()
+        self.score_text = self.font.render(f'SCORE: {self.score}', False, (255, 255, 255))
+        self.remove_fruit_reset()
+
+    def remove_fruit_reset(self):
+        rng = random.Random()
+        rng.seed(time.time())
+        self.fruit_spawned = False
+        self.fruit_random_spawn_timer = rng.randrange(20000, 50000, 1)
+        self.fruit_spawn_timer = pygame.time.get_ticks()
+        self.fruits[self.spawned_fruit_index].rect.center = (-100, -100)
+
+    def should_despawn_fruit(self):
+        if self.fruit_spawned \
+                and pygame.time.get_ticks() - self.fruit_spawned_begin >= self.fruit_spawned_timeout:
+            self.remove_fruit_reset()
+
+
     def small_pellet_eaten(self):
+        self.number_of_small_pellets -= 1
         self.score += self.small_pellet_score
         self.score_text = self.font.render(f'SCORE: {self.score}', False, (255, 255, 255))
         pass
 
     def power_pellet_eaten(self):
+        self.number_of_powerups -= 1
         self.score += self.power_pellet_score
         self.score_text = self.font.render(f'SCORE: {self.score}', False, (255, 255, 255))
         pass
@@ -120,8 +204,12 @@ class PacmanGame:
 
         self.handle_powerup()
 
+        self.should_despawn_fruit()
+        self.fruit_spawn()
+
         self.ghost_group.draw(self.screen)
         self.pacman_group.draw(self.screen)
+        self.fruit_group.draw(self.screen)
 
         self.pacman_group.update()
         self.ghost_group.update()
@@ -136,7 +224,9 @@ class PacmanGame:
                 self.pacman_dead()
                 pass
             pass
-
+        fruit = pygame.sprite.spritecollideany(self.pacman, self.fruit_group)
+        if fruit:
+            self.eat_fruit(fruit)
         self.handle_events()
 
         pygame.display.flip()
@@ -290,6 +380,8 @@ class PacmanGame:
         pass
 
 
+
+
 class Entity(pygame.sprite.Sprite):
     def __init__(self, context: PacmanGame, speed=2):
         super().__init__()
@@ -305,6 +397,58 @@ class Entity(pygame.sprite.Sprite):
         if self.context.debug:
             pygame.draw.circle(self.screen, 'cyan', ((center_x + error_x), (error_y + center_y)), 3)
         return (center_x + error_x) // self.tile_width, (error_y + center_y) // self.tile_height
+
+
+class Fruit(Entity):
+    def __init__(self, context: PacmanGame):
+        super().__init__(context, 0)
+        self.image_size = 35
+        self.screen = self.context.get_screen()
+        self.tile_width = self.context.get_tile_width()
+        self.tile_height = self.context.get_tile_height()
+        pass
+
+    def get_points(self):
+        pass
+
+
+class Cherry(Fruit):
+    def __init__(self, context: PacmanGame):
+        super().__init__(context)
+        self.points = 100
+        self.image = pygame.transform.scale(pygame.image.load(f'cherry.png'), (self.image_size, self.image_size))
+        self.rect = self.image.get_bounding_rect()
+        self.rect.center = (-100, -100)
+        pass
+
+    def get_points(self):
+        return self.points
+
+
+class Strawberry(Fruit):
+    def __init__(self, context: PacmanGame):
+        super().__init__(context)
+        self.points = 300
+        self.image = pygame.transform.scale(pygame.image.load(f'strawberry.png'), (self.image_size, self.image_size))
+        self.rect = self.image.get_bounding_rect()
+        self.rect.center = (-100, -100)
+        pass
+
+    def get_points(self):
+        return self.points
+
+
+class Apple(Fruit):
+    def __init__(self, context: PacmanGame):
+        super().__init__(context)
+        self.points = 700
+        self.image = pygame.transform.scale(pygame.image.load(f'apple.png'), (self.image_size, self.image_size))
+        self.rect = self.image.get_bounding_rect()
+        self.rect.center = (-100, -100)
+        pass
+
+    def get_points(self):
+        return self.points
 
 
 class Pacman(Entity):
@@ -461,8 +605,10 @@ class Ghost(Entity):
         self.frightened_image_path = f'vulnerable.png'
         self.standard_image = None
         self.dead_image_path = f'dead.png'
-        self.frightened_image = pygame.transform.scale(pygame.image.load(self.frightened_image_path), (self.image_size, self.image_size))
-        self.dead_image = pygame.transform.scale(pygame.image.load(self.dead_image_path), (self.image_size, self.image_size))
+        self.frightened_image = pygame.transform.scale(pygame.image.load(self.frightened_image_path),
+                                                       (self.image_size, self.image_size))
+        self.dead_image = pygame.transform.scale(pygame.image.load(self.dead_image_path),
+                                                 (self.image_size, self.image_size))
         self.context = context
         self.screen = self.context.screen
         self.speed = speed
@@ -488,7 +634,7 @@ class Ghost(Entity):
         self.target = (15, 11)
         #
         self.state_index = 0
-        self.state_times = [0, # Potencijalno je ovo na nivou game-a
+        self.state_times = [0,  # Potencijalno je ovo na nivou game-a
                             7000,
                             20000,
                             7000,
@@ -659,7 +805,8 @@ class Ghost(Entity):
 
     def get_next_tile(self):
         # if at the target tile
-        if self.calculate_center_for_tile(self.next_tile[0], self.next_tile[1]) == (self.rect.centerx, self.rect.centery):
+        if self.calculate_center_for_tile(self.next_tile[0], self.next_tile[1]) == (
+        self.rect.centerx, self.rect.centery):
             tile_x, tile_y = self.get_entity_current_tile()
             best_distance = 1000
             best_direction = (0, 0)
@@ -719,7 +866,8 @@ class Ghost(Entity):
 
     def get_next_random_tile(self):
         # if at the target tile
-        if self.calculate_center_for_tile(self.next_tile[0], self.next_tile[1]) == (self.rect.centerx, self.rect.centery):
+        if self.calculate_center_for_tile(self.next_tile[0], self.next_tile[1]) == (
+        self.rect.centerx, self.rect.centery):
             rand = random.Random()
             rand.seed(time.time())
             tile_x, tile_y = self.get_entity_current_tile()
@@ -757,13 +905,14 @@ class Pinky(Ghost):
     def __init__(self, context: PacmanGame, speed=2):
         super().__init__(context, speed)
         self.image_path = f'pinky.png'
-        self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path), (self.image_size, self.image_size))
+        self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path),
+                                                     (self.image_size, self.image_size))
         self.image = self.standard_image
         self.rect = self.image.get_bounding_rect()
         self.image = self.image.subsurface(self.rect)
         self.current_tile = (12, 14)
         self.next_tile = (12, 14)
-        self.scatter_target = (0,0)
+        self.scatter_target = (0, 0)
         self.target_color = (255, 184, 255)
         self.rect.center = self.calculate_center_for_tile(self.current_tile[0], self.current_tile[1])
 
@@ -792,7 +941,8 @@ class Inky(Ghost):
     def __init__(self, context: PacmanGame, speed=2):
         super().__init__(context, speed)
         self.image_path = f'inky.png'
-        self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path), (self.image_size, self.image_size))
+        self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path),
+                                                     (self.image_size, self.image_size))
         self.image = self.standard_image
         self.rect = self.image.get_bounding_rect()
         self.previous_tile = (17, 14)
@@ -827,7 +977,8 @@ class Clyde(Ghost):
     def __init__(self, context: PacmanGame, speed=2):
         super().__init__(context, speed)
         self.image_path = f'clyde.png'
-        self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path), (self.image_size, self.image_size))
+        self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path),
+                                                     (self.image_size, self.image_size))
         self.image = self.standard_image
         self.rect = self.image.get_bounding_rect()
         self.previous_tile = (12, 16)
@@ -856,7 +1007,8 @@ class Blinky(Ghost):
     def __init__(self, context: PacmanGame, speed=2):
         super().__init__(context, speed)
         self.image_path = f'blinky.png'
-        self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path), (self.image_size, self.image_size))
+        self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path),
+                                                     (self.image_size, self.image_size))
         self.image = self.standard_image
         self.rect = self.image.get_bounding_rect()
         self.previous_tile = (17, 16)
@@ -869,10 +1021,12 @@ class Blinky(Ghost):
         super().update()
 
     def scatter(self):
+        if self.context.number_of_small_pellets + self.context.number_of_powerups <= 20:
+            self.target = self.context.pacman.get_entity_current_tile()
+            return
         self.target = self.scatter_target
 
     def chase(self):
-        # TODO Blinky treba da bude samo u chase kada ima 20 tackica na talonu
         self.target = self.context.pacman.get_entity_current_tile()
 
 
