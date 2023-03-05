@@ -6,46 +6,20 @@ import OriginalGame.enums.Direction as Direction
 import random
 import time
 import math
+import os
+
+lib_path = os.path.dirname(__file__)
 
 
 class Ghost(entity.Entity.Entity):
-    def calculate_center_for_tile(self, x, y):
-        return int(x * self.tile_width + self.tile_width / 2), int(y * self.tile_height + self.tile_height / 2)
-
-    def check_center_is_in_tile(self, tile_x, tile_y):
-        return self.rect.centerx == tile_x * self.tile_width + self.tile_width / 2 and \
-            self.rect.centery == tile_y * self.tile_height + self.tile_height / 2
-
-    def trigger_frightened(self):
-        self.state = State.State.FRIGHTENED
-        self.image = self.frightened_image
-        pass
-
-    def trigger_dead(self):
-        self.state = State.State.EATEN
-        self.image = self.dead_image
-        pass
-
-    def trigger_standard(self):
-        # If killed, we want him to go to the house
-        if self.state == State.State.EATEN:
-            return
-        # TODO kako ovo?
-        if self.state_index % 2:
-            self.state = State.State.CHASE
-        else:
-            self.state = State.State.SCATTER
-
-        self.image = self.standard_image
-        pass
 
     def __init__(self, context, speed):
         super().__init__(context, speed)
         self.game_begun = False
         self.image_size = 35
-        self.frightened_image_path = f'resources/vulnerable.png'
+        self.frightened_image_path = os.path.abspath(os.path.join(lib_path, '../resources/vulnerable.png'))
         self.standard_image = None
-        self.dead_image_path = f'resources/dead.png'
+        self.dead_image_path = os.path.abspath(os.path.join(lib_path, '../resources/dead.png'))
         self.frightened_image = pygame.transform.scale(pygame.image.load(self.frightened_image_path),
                                                        (self.image_size, self.image_size))
         self.dead_image = pygame.transform.scale(pygame.image.load(self.dead_image_path),
@@ -87,6 +61,37 @@ class Ghost(entity.Entity.Entity):
                             0]
         #
         self.begin_state_time = pygame.time.get_ticks()  # in_house is the first state
+
+
+    def calculate_center_for_tile(self, x, y):
+        return int(x * self.tile_width + self.tile_width / 2), int(y * self.tile_height + self.tile_height / 2)
+
+    def check_center_is_in_tile(self, tile_x, tile_y):
+        return self.rect.centerx == tile_x * self.tile_width + self.tile_width / 2 and \
+            self.rect.centery == tile_y * self.tile_height + self.tile_height / 2
+
+    def trigger_frightened(self):
+        self.state = State.State.FRIGHTENED
+        self.image = self.frightened_image
+        pass
+
+    def trigger_dead(self):
+        self.state = State.State.EATEN
+        self.image = self.dead_image
+        pass
+
+    def trigger_standard(self):
+        # If killed, we want him to go to the house
+        if self.state == State.State.EATEN:
+            return
+        # TODO kako ovo?
+        if self.state_index % 2:
+            self.state = State.State.CHASE
+        else:
+            self.state = State.State.SCATTER
+
+        self.image = self.standard_image
+        pass
 
     def update_directions(self):
         tile_x, tile_y = self.get_entity_current_tile()
@@ -346,7 +351,7 @@ class Ghost(entity.Entity.Entity):
 class Pinky(Ghost):
     def __init__(self, context, speed=2):
         super().__init__(context, speed)
-        self.image_path = f'resources/pinky.png'
+        self.image_path = os.path.abspath(os.path.join(lib_path, '../resources/pinky.png'))
         self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path),
                                                      (self.image_size, self.image_size))
         self.image = self.standard_image
@@ -382,7 +387,7 @@ class Pinky(Ghost):
 class Inky(Ghost):
     def __init__(self, context, speed=2):
         super().__init__(context, speed)
-        self.image_path = f'resources/inky.png'
+        self.image_path = os.path.abspath(os.path.join(lib_path, '../resources/inky.png'))
         self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path),
                                                      (self.image_size, self.image_size))
         self.image = self.standard_image
@@ -418,7 +423,7 @@ class Inky(Ghost):
 class Clyde(Ghost):
     def __init__(self, context, speed=2):
         super().__init__(context, speed)
-        self.image_path = f'resources/clyde.png'
+        self.image_path = os.path.abspath(os.path.join(lib_path, '../resources/clyde.png'))
         self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path),
                                                      (self.image_size, self.image_size))
         self.image = self.standard_image
@@ -448,7 +453,7 @@ class Clyde(Ghost):
 class Blinky(Ghost):
     def __init__(self, context, speed=2):
         super().__init__(context, speed)
-        self.image_path = f'resources/blinky.png'
+        self.image_path = os.path.abspath(os.path.join(lib_path, '../resources/blinky.png'))
         self.standard_image = pygame.transform.scale(pygame.image.load(self.image_path),
                                                      (self.image_size, self.image_size))
         self.image = self.standard_image

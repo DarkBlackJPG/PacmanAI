@@ -3,51 +3,37 @@ import random
 import time
 import copy
 import pygame
+import os
+import numpy as np
 
-from board import board
-from pacman import Pacman
-from fruit import Fruit
-from ghosts import Ghosts
+from OriginalGame.pacman import Pacman
+from OriginalGame.board import board
+from OriginalGame.fruit import Fruit
+from OriginalGame.ghosts import Ghosts
+
+from enum import Enum
 
 DEBUG = False
 GRID = False
 
+lib_path = os.path.dirname(__file__)
+
+class RenderType(Enum):
+    HUMAN = 0
+    RGB_ARRAY = 1
+
 
 class PacmanGame:
-    def pacman_dead(self):
-        # Soft Reset
-        del self.pacman
-        del self.inky
-        del self.pinky
-        del self.clyde
-        del self.blinky
-        self.pacman_lives -= 1
-
-        if self.pacman_lives == 0:
-            self.full_reset()
-            return
-
-        self.reset_obejcts()
-
-        self.pause = True
-
-    def reset_obejcts(self):
-        self.pacman = Pacman.Pacman(self)
-        self.pacman_group = pygame.sprite.Group()
-        self.ghost_group = pygame.sprite.Group()
-        self.pinky = Ghosts.Pinky(self)
-        self.inky = Ghosts.Inky(self)
-        self.clyde = Ghosts.Clyde(self)
-        self.blinky = Ghosts.Blinky(self)
-        self.pacman_group.add(self.pacman)
-        self.ghost_group.add(self.pinky)
-        self.ghost_group.add(self.inky)
-        self.ghost_group.add(self.clyde)
-        self.ghost_group.add(self.blinky)
-
-    def __init__(self):
-        pygame.init()
+    def __init__(self, render_method: RenderType = RenderType.HUMAN, external_inputs=False, fps=60):
+        self._render_method = render_method
+        self.small_pellet_size = 4
+        self.large_pellet_size = 10
+        self.external_input_request = None
+        if self._render_method == RenderType.HUMAN:
+            pygame.init()
         pygame.font.init()
+        self.font = pygame.font.Font(os.path.abspath(os.path.join(lib_path, 'resources/joystix.otf')), 20)
+        self.external_inputs = external_inputs
         self.pacman_lives = 3
         self.WIDTH = 900
         self.HEIGHT = 950
@@ -59,9 +45,9 @@ class PacmanGame:
         self.tile_width = (self.WIDTH // 30)
         self.screen = pygame.display.set_mode([self.WIDTH, self.HEIGHT])
         self.timer = pygame.time.Clock()
-        self.fps = 240
+        self.fps = fps
         self.score = 0
-        self.font = pygame.font.Font(f'resources/joystix.otf', 20)
+
         self.run = True
         self.board_definition = copy.deepcopy(board.board_definition)
         self.wall_width = 5
@@ -138,6 +124,35 @@ class PacmanGame:
 
         self.score_text = self.font.render('SCORE: 0', False, (255, 255, 255))
 
+    def pacman_dead(self):
+        # Soft Reset
+        del self.pacman
+        del self.inky
+        del self.pinky
+        del self.clyde
+        del self.blinky
+        self.pacman_lives -= 1
+
+        if self.pacman_lives == 0:
+            self.full_reset()
+            return
+
+        self.reset_objects()
+
+    def reset_objects(self):
+        self.pacman = Pacman.Pacman(self)
+        self.pacman_group = pygame.sprite.Group()
+        self.ghost_group = pygame.sprite.Group()
+        self.pinky = Ghosts.Pinky(self)
+        self.inky = Ghosts.Inky(self)
+        self.clyde = Ghosts.Clyde(self)
+        self.blinky = Ghosts.Blinky(self)
+        self.pacman_group.add(self.pacman)
+        self.ghost_group.add(self.pinky)
+        self.ghost_group.add(self.inky)
+        self.ghost_group.add(self.clyde)
+        self.ghost_group.add(self.blinky)
+
     def ghost_eaten(self):
         self.score += self.ghost_eat_scores[self.ghost_eat_index]
         self.ghost_eat_index += 1
@@ -179,6 +194,7 @@ class PacmanGame:
     def small_pellet_eaten(self):
         self.number_of_small_pellets -= 1
         self.score += self.small_pellet_score
+
         self.score_text = self.font.render(f'SCORE: {self.score}', False, (255, 255, 255))
 
     def power_pellet_eaten(self):
@@ -186,42 +202,52 @@ class PacmanGame:
         self.score += self.power_pellet_score
         self.score_text = self.font.render(f'SCORE: {self.score}', False, (255, 255, 255))
 
-    def update(self):
-        if not self.run:
-            pygame.quit()
-            return
-        self.timer.tick(self.fps)
+    def _prepare_screen(self):
         self.screen.fill('black')
-
         self.draw_board()
-
-        self.handle_powerup()
-
-        self.should_despawn_fruit()
-        self.fruit_spawn()
-
         self.ghost_group.draw(self.screen)
         self.pacman_group.draw(self.screen)
         self.fruit_group.draw(self.screen)
 
+    def _fruit_handle(self):
+        self.should_despawn_fruit()
+        self.fruit_spawn()
+
+    def _entities_update(self):
         self.pacman_group.update()
         self.ghost_group.update()
 
-        ghost = pygame.sprite.spritecollideany(self.pacman, self.ghost_group)
-        if ghost:
-            if ghost.state == Ghosts.State.State.FRIGHTENED:
-                self.ghost_eaten()
-                ghost.trigger_dead()
+    def _check_collisions(self):
+        self._check_ghost_collisions()
+        self._check_fruit_collisions()
 
-            elif not ghost.state == Ghosts.State.State.EATEN:
-                self.pacman_dead()
+    def update(self):
+        if not self.run:
+            pygame.quit()
+            return
 
-        fruit = pygame.sprite.spritecollideany(self.pacman, self.fruit_group)
-        if fruit:
-            self.eat_fruit(fruit)
+        self._prepare_screen()
+
+        self.handle_powerup()
+
+        self._fruit_handle()
+
+        self._entities_update()
+
+        self._check_collisions()
+
         self.handle_events()
 
-        pygame.display.flip()
+        self._render()
+
+    def rgb_array(self):
+        return np.transpose(
+            np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
+        )
+
+    def _render(self):
+        if self._render_method == RenderType.HUMAN:
+            pygame.display.flip()
 
     def calculate_center(self, x, y):
         return x * self.tile_width + (0.5 * self.tile_height), y * self.tile_height + (0.5 * self.tile_width)
@@ -232,10 +258,12 @@ class PacmanGame:
             for j in range(len(self.board_definition[i])):
                 board_element = self.board_definition[i][j]
                 if board_element == 1:
-                    pygame.draw.circle(self.screen, self.circle_color, self.calculate_center(j, i), 4)
+                    pygame.draw.circle(self.screen, self.circle_color, self.calculate_center(j, i),
+                                       self.small_pellet_size)
 
                 elif board_element == 2:
-                    pygame.draw.circle(self.screen, self.circle_color, self.calculate_center(j, i), 10)
+                    pygame.draw.circle(self.screen, self.circle_color, self.calculate_center(j, i),
+                                       self.large_pellet_size)
 
                 elif board_element == 3:
                     begin, end = self.calculate_vertical(j, i)
@@ -267,7 +295,7 @@ class PacmanGame:
 
         for i in range(self.pacman_lives):
             offset = i * 45
-            self.screen.blit(pygame.transform.scale(self.pacman.image, (30, 30)), (700 + offset, 915))
+            self.screen.blit(pygame.transform.scale(self.pacman.original_image, (30, 30)), (700 + offset, 915))
 
         if self.debug and GRID:
             for x in range(0, self.WIDTH, self.tile_width):
@@ -323,6 +351,8 @@ class PacmanGame:
                 self.run = False
             if event.type == pygame.KEYDOWN:
                 self.handle_player_input(event)
+            elif self.external_input_request is not None and self.external_inputs:
+                self.handle_external_input()
 
     def handle_player_input(self, event):
         direction = Pacman.Direction.Direction.RIGHT
@@ -370,7 +400,7 @@ class PacmanGame:
     def full_reset(self):
         self.pacman_lives = 3
 
-        self.reset_obejcts()
+        self.reset_objects()
 
         self.pause = False
         self.powerup_timer = None
@@ -387,7 +417,31 @@ class PacmanGame:
         self.fruit_spawn_timer = 0
 
         self.score_text = self.font.render('SCORE: 0', False, (255, 255, 255))
+        self.score = 0
         self.board_definition = copy.deepcopy(board.board_definition)
+
+    def external_input(self, direction):
+        self.external_input_request = direction
+
+    def handle_external_input(self):
+        if self.external_input_request is not None:
+            self.pacman.change_facing_direction(self.external_input_request)
+            self.external_input_request = None
+
+    def _check_ghost_collisions(self):
+        ghost = pygame.sprite.spritecollideany(self.pacman, self.ghost_group)
+        if ghost:
+            if ghost.state == Ghosts.State.State.FRIGHTENED:
+                self.ghost_eaten()
+                ghost.trigger_dead()
+
+            elif not ghost.state == Ghosts.State.State.EATEN:
+                self.pacman_dead()
+
+    def _check_fruit_collisions(self):
+        fruit = pygame.sprite.spritecollideany(self.pacman, self.fruit_group)
+        if fruit:
+            self.eat_fruit(fruit)
 
 
 def calculate_euclidian_tile_dist(x, y):
@@ -395,6 +449,6 @@ def calculate_euclidian_tile_dist(x, y):
 
 
 if __name__ == '__main__':
-    game = PacmanGame()
+    game = PacmanGame(fps=999999)
     while game.run:
         game.update()

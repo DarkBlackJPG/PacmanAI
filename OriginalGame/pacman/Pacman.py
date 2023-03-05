@@ -1,20 +1,21 @@
 import pygame
 import OriginalGame.PacmanGame as PacmanGame
 import OriginalGame.entity as entity
-import OriginalGame.enums.State as State
 import OriginalGame.enums.Direction as Direction
-import random
-import time
-import math
+import os
+
+
+lib_path = os.path.dirname(__file__)
+
 
 class Pacman(entity.Entity.Entity):
-    def __init__(self, context: PacmanGame, speed=2.5):
+    def __init__(self, context: PacmanGame, speed=10):
         super().__init__(context, speed)
         self.context = context
         self.image_size = 40
         self.turn_error = 21
         self.error = 15
-        self.original_image = pygame.transform.scale(pygame.image.load(f'resources/pacman.png'),
+        self.original_image = pygame.transform.scale(pygame.image.load(os.path.abspath(os.path.join(lib_path, '../resources/pacman.png'))),
                                                      (self.image_size, self.image_size))
         self.image = self.original_image
         self.rect = self.image.get_bounding_rect()
@@ -22,10 +23,8 @@ class Pacman(entity.Entity.Entity):
         self.screen = self.context.get_screen()
         self.direction = Direction.Direction.RIGHT
         self.direction_request = Direction.Direction.RIGHT
-        self.speed = speed
         self.tile_width = self.context.get_tile_width()
         self.tile_height = self.context.get_tile_height()
-        self.board_definition = self.context.board_definition
 
     def update(self):
         if self.direction == Direction.Direction.UP:
@@ -47,13 +46,13 @@ class Pacman(entity.Entity.Entity):
     def move(self):
         tile_x, tile_y = self.get_entity_current_tile()
 
-        if 30 > tile_x >= 0 and self.board_definition[tile_y][tile_x] < 3:
-            if self.board_definition[tile_y][tile_x] == 2:
+        if 30 > tile_x >= 0 and self.context.board_definition[tile_y][tile_x] < 3:
+            if self.context.board_definition[tile_y][tile_x] == 2:
                 self.context.powerup()
-            elif self.board_definition[tile_y][tile_x] == 1:
+            elif self.context.board_definition[tile_y][tile_x] == 1:
                 self.context.small_pellet_eaten()
 
-            self.board_definition[tile_y][tile_x] = 0
+            self.context.board_definition[tile_y][tile_x] = 0
 
         if self.direction != self.direction_request:
             if self.direction_request == Direction.Direction.LEFT:
@@ -103,13 +102,13 @@ class Pacman(entity.Entity.Entity):
             self.rect.left = 897
 
     def valid_move(self, tile_x, tile_y):
-        if tile_x < 0 or tile_x > len(self.board_definition[0]) - 1 and (
+        if tile_x < 0 or tile_x > len(self.context.board_definition[0]) - 1 and (
                 self.direction == Direction.Direction.LEFT
                 or self.direction == Direction.Direction.RIGHT
                 or self.direction_request == Direction.Direction.LEFT
                 or self.direction_request == Direction.Direction.RIGHT):
             return True
-        if self.board_definition[tile_y][tile_x] < 3:
+        if self.context.board_definition[tile_y][tile_x] < 3:
             return True
 
         return False
