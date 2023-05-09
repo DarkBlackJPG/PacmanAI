@@ -9,10 +9,12 @@ lib_path = os.path.dirname(__file__)
 
 
 class Pacman(entity.Entity.Entity):
-    def __init__(self, context: PacmanGame, speed=10):
+    def __init__(self, context: PacmanGame, speed=1):
         super().__init__(context, speed)
         self.context = context
-        self.image_size = 40
+        self.tile_width = self.context.get_tile_width()
+        self.tile_height = self.context.get_tile_height()
+        self.image_size = self.tile_width - 5
         self.turn_error = 21
         self.error = 15
         self.original_image = pygame.transform.scale(pygame.image.load(os.path.abspath(os.path.join(lib_path, '../resources/pacman.png'))),
@@ -23,8 +25,6 @@ class Pacman(entity.Entity.Entity):
         self.screen = self.context.get_screen()
         self.direction = Direction.Direction.RIGHT
         self.direction_request = Direction.Direction.RIGHT
-        self.tile_width = self.context.get_tile_width()
-        self.tile_height = self.context.get_tile_height()
 
     def update(self):
         if self.direction == Direction.Direction.UP:

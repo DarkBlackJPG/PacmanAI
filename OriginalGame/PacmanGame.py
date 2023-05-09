@@ -5,13 +5,13 @@ import copy
 import pygame
 import os
 import numpy as np
+from enum import Enum
 
 from OriginalGame.pacman import Pacman
 from OriginalGame.board import board
 from OriginalGame.fruit import Fruit
 from OriginalGame.ghosts import Ghosts
 
-from enum import Enum
 
 DEBUG = False
 GRID = False
@@ -25,31 +25,40 @@ class RenderType(Enum):
 
 class PacmanGame:
     def __init__(self, render_method: RenderType = RenderType.HUMAN, external_inputs=False, fps=60):
-        self._render_method = render_method
+        pygame.init()
         self.small_pellet_size = 4
         self.large_pellet_size = 10
-        self.external_input_request = None
-        if self._render_method == RenderType.HUMAN:
-            pygame.init()
-        pygame.font.init()
-        self.font = pygame.font.Font(os.path.abspath(os.path.join(lib_path, 'resources/joystix.otf')), 20)
-        self.external_inputs = external_inputs
         self.pacman_lives = 3
-        self.WIDTH = 900
-        self.HEIGHT = 950
-        self.tile_height = ((self.HEIGHT - 50) // 32)
+        self.WIDTH = 400
+        self.HEIGHT = 400
+        self.num_of_rows = 32
+        self.num_of_cols = 30
         self.wall_color = (65, 107, 186)
         self.circle_color = 'beige'
         self.ghost_wall_color = 'white'
         self.wall_color = (65, 107, 186)
-        self.tile_width = (self.WIDTH // 30)
+        self.external_input_request = None
+        self.board_definition = copy.deepcopy(board.board_definition)
+        self.power_pellet_time = 10_000
+
+        self._render_method = render_method
+
+        pygame.font.init()
+        self.font = pygame.font.Font(os.path.abspath(os.path.join(lib_path, 'resources/joystix.otf')), 20)
+
+        self.external_inputs = external_inputs
+
+        # self.tile_height = ((self.HEIGHT - 50) // 32)
+        self.tile_height = (self.HEIGHT // self.num_of_rows)
+        self.tile_width = (self.WIDTH // self.num_of_cols)
+
         self.screen = pygame.display.set_mode([self.WIDTH, self.HEIGHT])
         self.timer = pygame.time.Clock()
         self.fps = fps
         self.score = 0
 
         self.run = True
-        self.board_definition = copy.deepcopy(board.board_definition)
+
         self.wall_width = 5
         self.debug = DEBUG
         self.pacman = Pacman.Pacman(self)
@@ -66,7 +75,6 @@ class PacmanGame:
         self.ghost_group.add(self.blinky)
         self.pause = False
         self.powerup_timer = None
-        self.power_pellet_time = 10000
         self.fruit_spawn_points = [
             (10, 12),
             (10, 13),

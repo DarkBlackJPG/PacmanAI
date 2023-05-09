@@ -7,6 +7,11 @@ import gym
 from gym import spaces
 import numpy as np
 from stable_baselines3 import A2C
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import VecFrameStack, VecNormalize
+from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3 import DQN
 class PacmanGym(gym.Env):
@@ -42,6 +47,7 @@ class PacmanGym(gym.Env):
         # if action is None or action is np.NaN or not (0 <= action <= 4):
         #     raise ValueError(f'Available actions are from 0 to 4, requested action value {action}')
         self.i += 1
+        print(action)
         direction = self._action_to_direction[action]
         self.core_game.external_input(direction)
 
@@ -77,7 +83,12 @@ if __name__ == '__main__':
     env = gym.make("PacmanGym-v0", render_mode=PacmanGameGym.PacmanGame.RenderType.HUMAN)
     check_env(env, warn=True)
     env.reset()
-    model = A2C("MlpPolicy", env, verbose=1)
+    n_envs = 4
+    vec_env = make_vec_env(lambda: env, n_envs=n_envs)
+    vec_env = VecFrameStack(vec_env, n_stack=4)
+    vec_env = VecNormalize(vec_env, norm_obs=True, norm_reward=True, clip_obs=10.0)
+
+    model = DQN("CnnPolicy", vec_env, verbose=1)
     model.learn(total_timesteps=1000, log_interval=4)
     obs = env.reset()
     for _ in range(1000):

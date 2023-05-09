@@ -2,7 +2,7 @@ import pygame
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, context, speed=100):
+    def __init__(self, context, speed=1):
         super().__init__()
         self.context = context
         self.original_speed = speed
